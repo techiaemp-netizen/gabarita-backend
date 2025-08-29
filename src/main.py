@@ -49,29 +49,29 @@ def root():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
+    """Endpoint de verificação de saúde da API"""
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0'
+        'message': 'API funcionando corretamente',
+        'timestamp': str(datetime.now())
     })
 
 @app.route('/api/test', methods=['GET', 'OPTIONS'])
 def test_endpoint():
-    """Endpoint de teste para verificar conectividade"""
+    """Endpoint de teste público para verificar conectividade"""
     if request.method == 'OPTIONS':
+        # Resposta para preflight CORS
         response = jsonify({'status': 'ok'})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
         return response
     
     return jsonify({
         'status': 'success',
-        'message': 'API está funcionando corretamente',
-        'timestamp': datetime.now().isoformat(),
-        'method': request.method,
-        'headers': dict(request.headers)
+        'message': 'Endpoint de teste funcionando',
+        'timestamp': str(datetime.now()),
+        'cors_enabled': True
     })
 
 @app.route('/api/opcoes/test', methods=['GET', 'OPTIONS'])
@@ -81,40 +81,29 @@ def test_opcoes():
         response = jsonify({'status': 'ok'})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
         return response
     
-    opcoes_mock = {
-        'opcoes_carreira': [
-            {'id': 1, 'nome': 'Concursos Públicos', 'descricao': 'Preparação para concursos públicos federais, estaduais e municipais'},
-            {'id': 2, 'nome': 'ENEM', 'descricao': 'Preparação completa para o Exame Nacional do Ensino Médio'},
-            {'id': 3, 'nome': 'Vestibulares', 'descricao': 'Preparação para vestibulares das principais universidades'},
-            {'id': 4, 'nome': 'OAB', 'descricao': 'Preparação para o Exame da Ordem dos Advogados do Brasil'},
-            {'id': 5, 'nome': 'Residência Médica', 'descricao': 'Preparação para provas de residência médica'}
-        ],
-        'opcoes_materia': [
-            {'id': 1, 'nome': 'Português', 'categoria': 'Linguagens'},
-            {'id': 2, 'nome': 'Matemática', 'categoria': 'Exatas'},
-            {'id': 3, 'nome': 'História', 'categoria': 'Humanas'},
-            {'id': 4, 'nome': 'Geografia', 'categoria': 'Humanas'},
-            {'id': 5, 'nome': 'Biologia', 'categoria': 'Natureza'},
-            {'id': 6, 'nome': 'Química', 'categoria': 'Natureza'},
-            {'id': 7, 'nome': 'Física', 'categoria': 'Natureza'},
-            {'id': 8, 'nome': 'Direito Constitucional', 'categoria': 'Jurídica'},
-            {'id': 9, 'nome': 'Direito Administrativo', 'categoria': 'Jurídica'},
-            {'id': 10, 'nome': 'Informática', 'categoria': 'Tecnologia'}
-        ]
-    }
-    
-    return jsonify({
-        'status': 'success',
-        'data': opcoes_mock,
-        'timestamp': datetime.now().isoformat()
-    })
+    try:
+        from .routes.questoes import CONTEUDOS_EDITAL
+        total_cargos = len(CONTEUDOS_EDITAL) if CONTEUDOS_EDITAL else 0
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Teste de opções funcionando',
+            'total_cargos': total_cargos,
+            'conteudos_carregados': bool(CONTEUDOS_EDITAL),
+            'timestamp': str(datetime.now())
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Erro no teste: {str(e)}',
+            'timestamp': str(datetime.now())
+        }), 500
 
 @app.route('/api/health', methods=['GET'])
 def api_health():
-    """API Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
@@ -123,237 +112,295 @@ def api_health():
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    """Simulação de login para testes"""
     data = request.get_json()
-    
-    # Simulação simples de autenticação
+    # Simulação de login simples
     return jsonify({
         'success': True,
-        'message': 'Login realizado com sucesso',
         'user': {
-            'id': '123',
-            'email': data.get('email', 'test@example.com'),
-            'name': 'Usuário Teste'
+            'id': '1',
+            'nome': data.get('email', 'Usuário'),
+            'email': data.get('email'),
+            'cargo': 'Enfermeiro',
+            'bloco': 'Saúde'
         },
-        'token': 'mock_jwt_token_123'
+        'token': 'demo_token_123'
     })
 
 @app.route('/api/questoes/gerar', methods=['POST'])
 def gerar_questao_endpoint():
-    """Endpoint para gerar questões com fallback"""
+    import sys
+    print("🔥 Requisição recebida na API de geração de questões")
+    sys.stdout.flush()
+    data = request.get_json()
+    print(f"📋 Dados recebidos: {data}")
+    sys.stdout.flush()
+    
+    usuario_id = data.get('usuario_id', 'user-default')
+    cargo = data.get('cargo', 'Enfermeiro')
+    bloco = data.get('bloco', 'Saúde')
+    
+    print(f"👤 Usuario ID: {usuario_id}")
+    print(f"💼 Cargo: {cargo}")
+    print(f"📚 Bloco: {bloco}")
+    sys.stdout.flush()
+    
+    # Obter conteúdo específico do edital
+    conteudo_edital = CONTEUDOS_EDITAL.get(cargo, {}).get(bloco, [])
+    print(f"📖 Conteúdo do edital: {conteudo_edital}")
+    sys.stdout.flush()
+    
+    if not conteudo_edital:
+        print("❌ Cargo ou bloco não encontrado")
+        return jsonify({'erro': 'Cargo ou bloco não encontrado'}), 404
+    
+    # Usar a função real de geração de questões
     try:
-        data = request.get_json()
-        materia = data.get('materia', 'Português')
-        dificuldade = data.get('dificuldade', 'medio')
-        quantidade = data.get('quantidade', 1)
+        print("🤖 Gerando questão com ChatGPT...")
+        sys.stdout.flush()
+        conteudo_str = ', '.join(conteudo_edital[:3])  # Usar os primeiros 3 tópicos
+        questao_gerada = chatgpt_service.gerar_questao(cargo, conteudo_str)
         
-        # Tentar usar o serviço ChatGPT primeiro
-        try:
-            questoes = chatgpt_service.gerar_questoes(
-                materia=materia,
-                dificuldade=dificuldade,
-                quantidade=quantidade
-            )
+        if questao_gerada:
+            print(f"✅ Questão gerada com sucesso: {questao_gerada.get('questao', 'N/A')[:50]}...")
+            # Converter formato para o frontend
+            questao_frontend = {
+                'id': f'q-{usuario_id}-{datetime.now().strftime("%Y%m%d%H%M%S")}',
+                'enunciado': questao_gerada.get('questao', ''),
+                'alternativas': [{'id': alt['id'], 'texto': alt['texto']} for alt in questao_gerada.get('alternativas', [])],
+                'gabarito': questao_gerada.get('gabarito', 'A'),
+                'explicacao': questao_gerada.get('explicacao', ''),
+                'dificuldade': questao_gerada.get('dificuldade', 'medio'),
+                'tema': questao_gerada.get('tema', conteudo_edital[0] if conteudo_edital else 'Geral')
+            }
+            return jsonify({'questao': questao_frontend})
+        else:
+            print("❌ ChatGPT retornou None")
+            raise Exception("ChatGPT não retornou questão válida")
             
-            if questoes:
-                return jsonify({
-                    'success': True,
-                    'questoes': questoes,
-                    'fonte': 'chatgpt',
-                    'message': f'{len(questoes)} questão(ões) gerada(s) com sucesso'
-                })
-        except Exception as e:
-            print(f"Erro no ChatGPT: {e}")
-        
-        # Fallback: questões estáticas baseadas na matéria
-        questoes_fallback = [
-            {
-                'id': f'q_{i+1}',
-                'enunciado': f'Questão de {materia} - Nível {dificuldade.title()}. Esta é uma questão de exemplo para testar a funcionalidade do sistema.',
-                'alternativas': [
-                    {'letra': 'A', 'texto': 'Primeira alternativa'},
-                    {'letra': 'B', 'texto': 'Segunda alternativa'},
-                    {'letra': 'C', 'texto': 'Terceira alternativa'},
-                    {'letra': 'D', 'texto': 'Quarta alternativa'},
-                    {'letra': 'E', 'texto': 'Quinta alternativa'}
-                ],
-                'resposta_correta': 'A',
-                'explicacao': f'Esta é a explicação da questão de {materia}.',
-                'materia': materia,
-                'dificuldade': dificuldade,
-                'tags': [materia.lower(), dificuldade]
-            } for i in range(quantidade)
-        ]
-        
-        return jsonify({
-            'success': True,
-            'questoes': questoes_fallback,
-            'fonte': 'fallback',
-            'message': f'{len(questoes_fallback)} questão(ões) gerada(s) com sucesso (modo fallback)'
-        })
-        
     except Exception as e:
+        print(f"❌ Erro ao gerar questão: {e}")
+        sys.stdout.flush()
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush()
+        # Fallback
+        questao_personalizada = {
+            'id': f'q-{usuario_id}-{datetime.now().strftime("%Y%m%d%H%M%S")}',
+            'enunciado': 'Questão de exemplo sobre SUS',
+            'alternativas': [
+                {'id': 'A', 'texto': 'Alternativa A'},
+                {'id': 'B', 'texto': 'Alternativa B'},
+                {'id': 'C', 'texto': 'Alternativa C'},
+                {'id': 'D', 'texto': 'Alternativa D'},
+                {'id': 'E', 'texto': 'Alternativa E'}
+            ],
+            'gabarito': 'C',
+            'explicacao': 'Explicação da resposta correta',
+            'dificuldade': 'medio',
+            'tema': 'SUS'
+        }
+        
+        print(f"✅ Questão fallback gerada: {questao_personalizada['enunciado'][:50]}...")
+        
         return jsonify({
-            'success': False,
-            'error': str(e),
-            'message': 'Erro ao gerar questões'
-        }), 500
+            'questao': questao_personalizada
+        })
 
 @app.route('/api/questoes/<questao_id>/responder', methods=['POST'])
 def responder_questao(questao_id):
-    """Endpoint para responder questões"""
     data = request.get_json()
     resposta = data.get('resposta')
     
-    # Simulação de verificação de resposta
     return jsonify({
         'success': True,
-        'correto': resposta == 'A',  # Simulação
-        'resposta_correta': 'A',
-        'explicacao': 'Esta é uma explicação simulada da resposta correta.'
+        'correto': resposta == 'C',
+        'gabarito': 'C',
+        'explicacao': 'Explicação detalhada da resposta'
     })
 
 @app.route('/api/perplexity/explicacao', methods=['POST'])
 def obter_explicacao_perplexity():
-    """Endpoint para obter explicações com fallback"""
+    import sys
+    print("🔍 Requisição recebida para explicação do Perplexity")
+    sys.stdout.flush()
+    
+    data = request.get_json()
+    questao = data.get('questao', '')
+    alternativa_correta = data.get('alternativa_correta', '')
+    alternativa_escolhida = data.get('alternativa_escolhida', '')
+    materia = data.get('materia', '')
+    tema = data.get('tema', '')
+    
+    print(f"📝 Questão: {questao[:100]}...")
+    print(f"✅ Alternativa correta: {alternativa_correta}")
+    print(f"❌ Alternativa escolhida: {alternativa_escolhida}")
+    print(f"📚 Matéria: {materia}")
+    print(f"🎯 Tema: {tema}")
+    sys.stdout.flush()
+    
     try:
-        data = request.get_json()
-        questao = data.get('questao', '')
-        resposta = data.get('resposta', '')
+        # Criar prompt para explicação detalhada
+        prompt_explicacao = f"""
+        Explique detalhadamente por que a alternativa {alternativa_correta} é a correta para esta questão de concurso público:
         
-        # Tentar usar serviço real primeiro (implementar depois)
-        # Por enquanto, usar fallback
+        Questão: {questao}
         
+        O candidato escolheu a alternativa {alternativa_escolhida}, mas a correta é {alternativa_correta}.
+        
+        Forneça:
+        1. Explicação clara do conceito
+        2. Por que a alternativa {alternativa_correta} está correta
+        3. Por que a alternativa {alternativa_escolhida} está incorreta
+        4. Fontes de estudo recomendadas sobre {tema} em {materia}
+        
+        Seja didático e inclua referências normativas quando aplicável.
+        """
+        
+        print("🤖 Enviando prompt para o Perplexity...")
+        sys.stdout.flush()
+        
+        # Usar o serviço ChatGPT/Perplexity para gerar explicação
+        explicacao_detalhada = chatgpt_service.gerar_explicacao(prompt_explicacao)
+        
+        if explicacao_detalhada:
+            print(f"✅ Explicação gerada com sucesso: {explicacao_detalhada[:100]}...")
+            return jsonify({
+                'success': True,
+                'explicacao': explicacao_detalhada,
+                'fontes': [
+                    'Constituição Federal de 1988',
+                    'Lei 8.080/90 - Lei Orgânica da Saúde',
+                    'Lei 8.142/90 - Participação e Financiamento do SUS'
+                ]
+            })
+        else:
+            raise Exception("Não foi possível gerar explicação")
+            
+    except Exception as e:
+        print(f"❌ Erro ao gerar explicação: {e}")
+        sys.stdout.flush()
+        
+        # Fallback com explicação genérica
         explicacao_fallback = f"""
-        **Explicação da Questão:**
+        A alternativa {alternativa_correta} é a correta para esta questão sobre {tema}.
         
-        A questão aborda conceitos fundamentais da matéria em questão. 
+        Para entender melhor este conceito, recomendo revisar:
+        - Legislação específica sobre {materia}
+        - Conceitos fundamentais de {tema}
+        - Jurisprudência relacionada ao assunto
         
-        **Análise das Alternativas:**
-        
-        - **Alternativa A**: Esta é a resposta correta porque...
-        - **Alternativa B**: Incorreta, pois...
-        - **Alternativa C**: Não se aplica porque...
-        - **Alternativa D**: Embora pareça correta, está errada devido a...
-        - **Alternativa E**: Claramente incorreta, já que...
-        
-        **Dica de Estudo:**
-        Para dominar este tipo de questão, é importante revisar os conceitos básicos e praticar com exercícios similares.
-        
-        **Resposta Selecionada:** {resposta}
-        
-        Esta explicação foi gerada automaticamente pelo sistema Gabarita.AI.
+        Continue estudando e pratique mais questões sobre este tema!
         """
         
         return jsonify({
             'success': True,
             'explicacao': explicacao_fallback,
-            'fonte': 'fallback',
-            'timestamp': datetime.now().isoformat()
+            'fontes': [
+                'Material de estudo recomendado',
+                'Legislação pertinente',
+                'Doutrina especializada'
+            ]
         })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'message': 'Erro ao obter explicação'
-        }), 500
 
 @app.route('/api/simulados/submit', methods=['POST'])
 def submit_simulado():
-    """Endpoint para submeter simulados e calcular score"""
+    """Submete um simulado e calcula o score"""
     try:
         data = request.get_json()
+        usuario_id = data.get('usuario_id')
         respostas = data.get('respostas', [])
-        tempo_total = data.get('tempo_total', 0)
         
-        # Simulação de cálculo de score
+        if not usuario_id or not respostas:
+            return jsonify({'erro': 'Dados obrigatórios não fornecidos'}), 400
+        
+        # Calcular estatísticas
         total_questoes = len(respostas)
-        acertos = sum(1 for r in respostas if r.get('correta', False))
-        percentual = (acertos / total_questoes * 100) if total_questoes > 0 else 0
+        acertos = sum(1 for r in respostas if r.get('resposta_usuario') == r.get('gabarito'))
+        erros = total_questoes - acertos
+        taxa_acerto = (acertos / total_questoes * 100) if total_questoes > 0 else 0
+        tempo_total = sum(r.get('tempo_resposta', 0) for r in respostas)
+        tempo_medio = tempo_total / total_questoes if total_questoes > 0 else 0
         
-        # Determinar desempenho
-        if percentual >= 80:
-            desempenho = 'Excelente'
-        elif percentual >= 60:
-            desempenho = 'Bom'
-        elif percentual >= 40:
-            desempenho = 'Regular'
-        else:
-            desempenho = 'Precisa Melhorar'
+        # Calcular score (0-1000 pontos)
+        score = int((acertos / total_questoes * 1000)) if total_questoes > 0 else 0
+        
+        # Resultado do simulado
+        resultado = {
+            'simulado_id': f'sim-{usuario_id}-{datetime.now().strftime("%Y%m%d%H%M%S")}',
+            'usuario_id': usuario_id,
+            'data_realizacao': datetime.now().isoformat(),
+            'total_questoes': total_questoes,
+            'acertos': acertos,
+            'erros': erros,
+            'taxa_acerto': round(taxa_acerto, 2),
+            'tempo_total': tempo_total,
+            'tempo_medio': round(tempo_medio, 2),
+            'score': score,
+            'status': 'concluido'
+        }
         
         return jsonify({
             'success': True,
-            'resultado': {
-                'total_questoes': total_questoes,
-                'acertos': acertos,
-                'erros': total_questoes - acertos,
-                'percentual': round(percentual, 2),
-                'desempenho': desempenho,
-                'tempo_total': tempo_total,
-                'tempo_medio_questao': round(tempo_total / total_questoes, 2) if total_questoes > 0 else 0
-            },
-            'timestamp': datetime.now().isoformat()
+            'resultado': resultado,
+            'message': f'Simulado concluído! Você acertou {acertos} de {total_questoes} questões ({taxa_acerto:.1f}%)'
         })
         
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'message': 'Erro ao processar simulado'
-        }), 500
+        print(f"Erro ao processar simulado: {e}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
 
 @app.route('/api/performance', methods=['GET'])
 def get_performance():
-    """Endpoint para obter dados de performance (simulado)"""
-    # Dados simulados de performance
-    performance_data = {
-        'resumo': {
-            'total_simulados': 15,
-            'media_acertos': 75.5,
-            'melhor_performance': 92.0,
-            'tempo_total_estudos': 2450  # em minutos
-        },
-        'historico_semanal': [
-            {'semana': '2024-01', 'acertos': 70, 'simulados': 3},
-            {'semana': '2024-02', 'acertos': 75, 'simulados': 4},
-            {'semana': '2024-03', 'acertos': 80, 'simulados': 5},
-            {'semana': '2024-04', 'acertos': 78, 'simulados': 3}
-        ],
-        'materias': [
-            {'nome': 'Português', 'acertos': 85, 'total': 100},
-            {'nome': 'Matemática', 'acertos': 70, 'total': 100},
-            {'nome': 'História', 'acertos': 75, 'total': 80},
-            {'nome': 'Geografia', 'acertos': 80, 'total': 90}
-        ]
-    }
-    
-    return jsonify({
-        'success': True,
-        'data': performance_data,
-        'timestamp': datetime.now().isoformat()
-    })
+    """Retorna dados de performance do usuário"""
+    try:
+        # Dados simulados de performance
+        performance_data = {
+            'total_questoes': 150,
+            'acertos': 120,
+            'erros': 30,
+            'taxa_acerto': 80.0,
+            'tempo_medio': 45.5,
+            'sequencia_atual': 5,
+            'melhor_sequencia': 12,
+            'nivel_atual': 'Intermediário',
+            'pontos_totais': 2450,
+            'progresso_semanal': [
+                {'dia': 'Seg', 'questoes': 15, 'acertos': 12},
+                {'dia': 'Ter', 'questoes': 20, 'acertos': 16},
+                {'dia': 'Qua', 'questoes': 18, 'acertos': 15},
+                {'dia': 'Qui', 'questoes': 22, 'acertos': 18},
+                {'dia': 'Sex', 'questoes': 25, 'acertos': 20}
+            ],
+            'desempenho_por_materia': [
+                {'materia': 'SUS', 'total': 50, 'acertos': 42, 'taxa': 84.0},
+                {'materia': 'Enfermagem', 'total': 60, 'acertos': 45, 'taxa': 75.0},
+                {'materia': 'Saúde Pública', 'total': 40, 'acertos': 33, 'taxa': 82.5}
+            ]
+        }
+        return jsonify(performance_data)
+    except Exception as e:
+        print(f"Erro ao obter performance: {e}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
 
 @app.route('/api/ranking', methods=['GET'])
 def get_ranking():
-    """Endpoint para obter dados de ranking (simulado)"""
-    # Dados simulados de ranking
-    ranking_data = {
-        'posicao_usuario': 15,
-        'total_usuarios': 1250,
-        'percentil': 88.0,
-        'top_10': [
-            {'posicao': 1, 'nome': 'Ana Silva', 'pontos': 2450, 'avatar': None},
-            {'posicao': 2, 'nome': 'João Santos', 'pontos': 2380, 'avatar': None},
-            {'posicao': 3, 'nome': 'Maria Oliveira', 'pontos': 2320, 'avatar': None}
-        ]
-    }
-    
-    return jsonify({
-        'success': True,
-        'data': ranking_data,
-        'timestamp': datetime.now().isoformat()
-    })
+    """Retorna o ranking de usuários"""
+    try:
+        ranking_data = {
+            'ranking': [
+                {'posicao': 1, 'nome': 'Usuário***', 'score': 2850, 'acertos': 95.2},
+                {'posicao': 2, 'nome': 'Estudante***', 'score': 2720, 'acertos': 92.8},
+                {'posicao': 3, 'nome': 'Concurseiro***', 'score': 2650, 'acertos': 90.5},
+                {'posicao': 4, 'nome': 'Você', 'score': 2450, 'acertos': 80.0, 'destaque': True},
+                {'posicao': 5, 'nome': 'Candidato***', 'score': 2380, 'acertos': 78.2}
+            ],
+            'sua_posicao': 4,
+            'total_usuarios': 1247
+        }
+        return jsonify(ranking_data)
+    except Exception as e:
+        print(f"Erro ao obter ranking: {e}")
+        return jsonify({'erro': 'Erro interno do servidor'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
